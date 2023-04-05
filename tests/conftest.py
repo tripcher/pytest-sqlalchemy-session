@@ -4,7 +4,7 @@ import pytest
 from packaging import version
 
 if version.parse(pytest.__version__).major < version.parse("7.0.0").major:
-    from _pytest.pytester import Testdir
+    from _pytest.pytester import Testdir  # type: ignore
 else:
     from pytest import Testdir  # type: ignore
 
