@@ -33,6 +33,8 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
           cache: "pip"
+          cache-dependency-path: |
+            **/requirements/*.txt
 
       - name: Run nox
         run: |
