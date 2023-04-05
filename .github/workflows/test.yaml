@@ -5,10 +5,12 @@ on:
     paths:
       - ".github/workflows/test.yaml"
       - "**.py"
+      - "Makefile"
   push:
     paths:
       - ".github/workflows/test.yaml"
       - "**.py"
+      - "Makefile"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
