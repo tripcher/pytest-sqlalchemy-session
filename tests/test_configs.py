@@ -1,6 +1,6 @@
 import logging
 
-from _pytest.pytester import Testdir
+from conftest import Testdir  # type: ignore
 
 logger = logging.getLogger(__name__)
 
