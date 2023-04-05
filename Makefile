@@ -1,3 +1,5 @@
+export PYTHONPATH=.
+
 .PHONY: unit  # Run unit tests
 unit:
 	@pytest -v -rf
