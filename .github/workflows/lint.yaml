@@ -3,11 +3,11 @@ name: Linting
 on:
   pull_request:
     paths:
-      - ".github/workflows/lint.yml"
+      - ".github/workflows/lint.yaml"
       - "**.py"
   push:
     paths:
-      - ".github/workflows/lint.yml"
+      - ".github/workflows/lint.yaml"
       - "**.py"
 
 concurrency:
