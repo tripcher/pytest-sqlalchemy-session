@@ -31,7 +31,10 @@ jobs:
       postgres:
         image: postgres
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -54,6 +57,6 @@ jobs:
         env:
           PYTHONPATH: .
           INTERPRETER: ${{ matrix.python_version }}
-          DB_DSN: postgresql://postgres:password@postgres:5432/pytest_sqlalchemy_session_test
+          DB_DSN: postgresql://postgres:password@localhost:5432/pytest_sqlalchemy_session_test
         run: nox --error-on-missing-interpreters -s tests-${INTERPRETER}
         shell: bash
