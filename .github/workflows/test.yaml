@@ -55,15 +55,14 @@ jobs:
         name: Install Postgres
         with:
           postgres-version: 14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
+      - name: Create postgres user
+        run: psql -d postgres -c "CREATE USER test_user WITH LOGIN SUPERUSER PASSWORD 'password';"
       - name: Install nox
         run: python3 -m pip install nox
       - name: Run nox
         env:
           PYTHONPATH: .
           INTERPRETER: ${{ matrix.python_version }}
-          DB_DSN: postgresql://postgres:password@localhost:5432/pytest_sqlalchemy_session_test
+          DB_DSN: postgresql://test_user:password@localhost:5432/pytest_sqlalchemy_session_test
         run: nox --error-on-missing-interpreters -s tests-${INTERPRETER}
         shell: bash
