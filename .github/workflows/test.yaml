@@ -58,21 +58,6 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
-        run: |
-          echo "Check PostgreSQL service is running"
-          i=20
-          COMMAND='pg_isready'
-          while [ $i -gt 0 ]; do
-              echo "Check PostgreSQL service status"
-              eval $COMMAND && break
-              ((i--))
-              if [ $i == 0 ]; then
-                  echo "PostgreSQL service not ready, all attempts exhausted"
-                  exit 1
-              fi
-              echo "PostgreSQL service not ready, wait 3 more sec, attempts left: $i"
-              sleep 3
-          done
       - name: Install nox
         run: python3 -m pip install nox
       - name: Run nox
