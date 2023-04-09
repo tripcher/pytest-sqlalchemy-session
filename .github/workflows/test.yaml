@@ -40,7 +40,7 @@ jobs:
 
       - name: Run nox
         env:
-          PYTHONPATH: .
+          PYTHONPATH: $PWD
           INTERPRETER: ${{ matrix.python_version }}
         run: pipx run nox --error-on-missing-interpreters -s tests-${INTERPRETER}
         shell: bash
