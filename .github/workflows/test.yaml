@@ -25,7 +25,18 @@ jobs:
       matrix:
         os: [Ubuntu, Windows, macOS]
         python_version:
-          ["3.6", "3.7", "3.8", "3.9", "3.10"]
+          ["3.7", "3.8", "3.9", "3.10"]
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v3
@@ -43,5 +54,6 @@ jobs:
         env:
           PYTHONPATH: .
           INTERPRETER: ${{ matrix.python_version }}
+          DB_DSN: postgresql://postgres:password@postgres:5432/pytest_sqlalchemy_session_test
         run: nox --error-on-missing-interpreters -s tests-${INTERPRETER}
         shell: bash

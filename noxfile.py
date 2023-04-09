@@ -1,7 +1,7 @@
 import nox
 
 
-@nox.session(python=["3.6", "3.7", "3.8", "3.9", "3.10"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10"])
 @nox.parametrize("sqlalchemy_version", ["1.4"])
 @nox.parametrize("pytest_version", ["6", "7"])
 def tests(session: nox.Session, sqlalchemy_version: str, pytest_version: str):
