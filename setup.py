@@ -16,7 +16,7 @@ def get_requirements(extra=None):
     extra = extra or "base"
     requirements_path = f"requirements/{extra}.txt"
     with open(requirements_path, "r") as fp:
-        return [x.strip() for x in fp.readlines()]
+        return [item.strip() for item in fp.readlines() if item and not item.startswith("--")]
 
 
 setup(
