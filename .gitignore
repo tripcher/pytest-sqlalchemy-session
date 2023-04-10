@@ -74,3 +74,8 @@ target/
 .python-version
 
 /.mypy_cache/
+
+
+# Pycharm
+.DS_Store
+.idea/
