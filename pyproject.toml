@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'pytest-sqlalchemy-session'
-version = "0.1.7-beta1"
+version = "0.1.8-beta1"
 authors = [
     {name = "Stanislav Shkitin", email = "stanislav.shkitin@yandex.ru"},
 ]
