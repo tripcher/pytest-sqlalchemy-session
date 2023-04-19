@@ -6,7 +6,7 @@ on:
       - "*"
 
 jobs:
-  build_sdist:
+  build:
     name: Build sdist
     runs-on: ubuntu-22.04
     steps:
@@ -17,40 +17,23 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Build sdist
-        run: "python setup.py sdist && ls -l dist"
+        run: "python setup.py sdist bdist_wheel && ls -l dist"
 
       - uses: actions/upload-artifact@v3
         with:
-          path: ./dist/pytest-sqlalchemy-session-*.tar.gz
+          name: dist
+          path: dist
 
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.12.3
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: ./wheelhouse/*.whl
 
   upload_pypi:
     name: Upload to PyPI (prod)
-    needs: [ build_wheels, build_sdist ]
+    needs: [ build ]
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: artifact
+          name: dist
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
