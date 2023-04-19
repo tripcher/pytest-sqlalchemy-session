@@ -17,7 +17,7 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: Build sdist
-        run: "python setup.py sdist bdist_wheel && ls -l dist"
+        run: "python -m build && ls -l dist"
 
       - uses: actions/upload-artifact@v3
         with:
