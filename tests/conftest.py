@@ -1,13 +1,7 @@
 import os
 
 import pytest
-from packaging import version
-
-if version.parse(pytest.__version__).major < version.parse("7.0.0").major:
-    from _pytest.pytester import Testdir  # type: ignore
-else:
-    from pytest import Testdir  # type: ignore
-
+from pytest import Pytester
 
 pytest_plugins = "pytester"
 
@@ -28,22 +22,22 @@ def conftest() -> str:
 
 
 @pytest.fixture
-def db_testdir(conftest, testdir: Testdir) -> Testdir:
+def db_testdir(conftest, pytester: Pytester) -> Pytester:
     """
     Set up a temporary test directory loaded with the configuration file for
     the tests.
     """
-    testdir.makeconftest(conftest)
+    pytester.makeconftest(conftest)
 
-    return testdir
+    return pytester
 
 
 @pytest.fixture
-def db_testdir_with_mocked_sessionmaker(db_testdir: Testdir) -> Testdir:
+def db_testdir_with_strict_mode(db_testdir: Pytester) -> Pytester:
     db_testdir.makeini(
         """
         [pytest]
-        mocked-sessionmakers=pytest_sqlalchemy_session_test.app.db.session_factory
+        strict-db=True
         """
     )
 

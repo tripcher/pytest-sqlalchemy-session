@@ -42,12 +42,3 @@ py-modules = ["pytest_sqlalchemy_session"]
 
 [project.entry-points.pytest11]
 pytest-sqlalchemy-session = "pytest_sqlalchemy_session.plugin"
-
-[tool.cibuildwheel]
-build = "cp3[89]* cp310* cp311*"
-
-[tool.cibuildwheel.macos]
-archs = "x86_64 universal2"
-
-[tool.cibuildwheel.linux]
-archs = "auto aarch64"
