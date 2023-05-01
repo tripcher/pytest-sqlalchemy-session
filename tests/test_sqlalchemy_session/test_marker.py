@@ -74,6 +74,46 @@ def test__marker__transaction_commit_not_affect_another_test(
     result.assert_outcomes(passed=2)
 
 
+def test__marker__transaction_commit_mix_markers(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_commit(custom_session):
+            custom_session.execute(sample_table.insert(), {"id": 1})
+            custom_session.commit()
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+
+            assert instance_1 == (1,)
+
+        @pytest.mark.transactional_db
+        def test_transaction_commit(custom_session):
+            custom_session.execute(sample_table.insert(), {"id": 2})
+            custom_session.commit()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_2 == (2,)
+
+        def test_transaction_commit_changes_dont_persist(custom_session):
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 == (2,)
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
 def test__marker__transaction_rollback(
     db_testdir: Pytester,
 ) -> None:

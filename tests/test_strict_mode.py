@@ -31,7 +31,7 @@ def test__strict_mode__usage_only_fixture(
     result.stdout.fnmatch_lines(
         [
             "*_pytest.config.exceptions.UsageError: "
-            "You need to use pytest.mark.sqlalchemy_db when you execute db queries.*"
+            "The pytest.mark.sqlalchemy_db or pytest.mark.transactional_db marker is required to execute db queries.*"
         ]
     )
 
@@ -60,7 +60,7 @@ def test__strict_mode__without_marker(db_testdir_with_strict_mode: Pytester) -> 
     result.stdout.fnmatch_lines(
         [
             "*_pytest.config.exceptions.UsageError: "
-            "You need to use pytest.mark.sqlalchemy_db when you execute db queries.*"
+            "The pytest.mark.sqlalchemy_db or pytest.mark.transactional_db marker is required to execute db queries.*"
         ]
     )
 
@@ -102,7 +102,7 @@ def test__strict_mode__marker_dont_affect_another_test(
     result.stdout.fnmatch_lines(
         [
             "*_pytest.config.exceptions.UsageError: "
-            "You need to use pytest.mark.sqlalchemy_db when you execute db queries.*"
+            "The pytest.mark.sqlalchemy_db or pytest.mark.transactional_db marker is required to execute db queries.*"
         ]
     )
 
@@ -156,6 +156,36 @@ def test__strict_mode__usage_marker(db_testdir_with_strict_mode: Pytester) -> No
             instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
 
             assert instance is None
+        """
+    )
+
+    result = db_testdir_with_strict_mode.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__strict_mode__usage_transactional_marker(
+    db_testdir_with_strict_mode: Pytester,
+) -> None:
+    db_testdir_with_strict_mode.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+
+        @pytest.mark.transactional_db
+        def test_transaction_commit(custom_session):
+            custom_session.execute(sample_table.insert(), {"id": 1})
+            custom_session.commit()
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.transactional_db
+        def test_transaction_commit_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
         """
     )
 

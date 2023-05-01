@@ -100,22 +100,25 @@ def _db() -> DbType:
 
 
 @pytest.fixture(scope="function", autouse=True)
-def _strict_session_rule(pytestconfig: Config, request: FixtureRequest, _db: DbType):
+def _strict_session_rule(
+    pytestconfig: Config, request: FixtureRequest, _db: DbType
+) -> None:
     enable_strict = pytestconfig._enable_strict  # type: ignore
     session_factory, engine = _db
+    transactional_marker = request.node.get_closest_marker("transactional_db")
 
-    if not enable_strict:
+    if not enable_strict or transactional_marker:
         return
 
-    marker = request.node.get_closest_marker("sqlalchemy_db")
+    db_marker = request.node.get_closest_marker("sqlalchemy_db")
 
-    if marker:
+    if db_marker:
         return
 
     @event.listens_for(engine, "before_execute")
     def raise_error_in_strict_mode(*args, **kwargs) -> None:
         raise UsageError(
-            "You need to use pytest.mark.sqlalchemy_db when you execute db queries."
+            "The pytest.mark.sqlalchemy_db or pytest.mark.transactional_db marker is required to execute db queries."
         )
 
     request.addfinalizer(
