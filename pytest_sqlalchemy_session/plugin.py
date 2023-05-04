@@ -25,3 +25,10 @@ def pytest_addoption(parser: Parser) -> None:
 @pytest.hookimpl(trylast=True)
 def pytest_configure(config: Config) -> None:
     config._enable_strict = config.getini("strict-db")  # type: ignore
+
+    config.addinivalue_line(
+        "markers", "sqlalchemy_db: mark test to use isolated transactions"
+    )
+    config.addinivalue_line(
+        "markers", "transactional_db: mark test to use usual transactions"
+    )
