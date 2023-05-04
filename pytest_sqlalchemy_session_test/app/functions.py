@@ -27,12 +27,39 @@ def create_instance_with_begin(instance_id: int) -> None:
         session.execute(sample_table.insert(), {"id": instance_id})
 
 
-def create_instance_with_begin_nested(instance_id: int, nested_instance_id) -> None:
+def create_instance_with_begin_nested(
+    instance_id: int, nested_instance_id: int
+) -> None:
     with db.session_factory() as session, session.begin():
         session.execute(sample_table.insert(), {"id": instance_id})
 
         with session.begin_nested():
             session.execute(sample_table.insert(), {"id": nested_instance_id})
+
+
+def create_instance_with_rollback_begin_nested(
+    instance_id: int,
+    committed_nested_instance_id: int,
+    rollback_nested_instance_id: int,
+    committed_nested_instance_id_2: int,
+) -> None:
+    with db.session_factory() as session:
+        session.begin()
+        session.execute(sample_table.insert(), {"id": instance_id})
+
+        session.begin_nested()
+        session.execute(sample_table.insert(), {"id": committed_nested_instance_id})
+        session.commit()
+
+        session.begin_nested()
+        session.execute(sample_table.insert(), {"id": rollback_nested_instance_id})
+        session.rollback()
+
+        session.begin_nested()
+        session.execute(sample_table.insert(), {"id": committed_nested_instance_id_2})
+        session.commit()
+
+        session.commit()
 
 
 def create_instance_with_commit_injection(session: Session, instance_id: int) -> None:

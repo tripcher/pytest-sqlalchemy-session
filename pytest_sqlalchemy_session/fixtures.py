@@ -1,6 +1,6 @@
 import contextlib
 import typing
-from typing import Any, Callable, Generator, Tuple
+from typing import Callable, Generator, Tuple
 
 import pytest
 from pytest import Config, FixtureRequest, UsageError
@@ -18,7 +18,7 @@ EventClauseElement = typing.Union[ClauseElement, Compiled, str]
 
 
 @contextlib.contextmanager
-def modify_transaction_to_rollback(
+def modify_transaction_to_rollback(  # noqa: C901
     db: DbType,
 ) -> Generator[Tuple[Connection, RootTransaction, Session], None, None]:
     """
@@ -34,52 +34,45 @@ def modify_transaction_to_rollback(
 
     session = session_factory()
 
-    # Make sure the session, connection, and transaction can't be closed by accident in
-    # the codebase
-    connection_force_close = connection.close
-    root_transaction_force_rollback = root_transaction.rollback
+    # Make sure the session can't be closed by accident in the codebase
     session_force_close = session.close
 
-    connection.close = lambda: None
-    # main_transaction.rollback = lambda: None
-    session.close = lambda: None
+    def close() -> None:
+        session.rollback()
+
+    session.close = close
 
     # Begin a nested transaction (any new transactions created in the codebase
     # will be held until this outer transaction is committed or closed)
-    session.begin_nested()
+    main_nested_transaction = session.begin_nested()
 
     # Each time the SAVEPOINT for the nested transaction ends, reopen it
     @event.listens_for(session, "after_transaction_end")
     def restart_savepoint(session: Session, trans: SessionTransaction) -> None:
-        if root_transaction.is_active and (trans.nested and not trans._parent.nested):
+        if root_transaction.is_active and (
+            (trans.nested and trans.parent == main_nested_transaction)
+            or (trans.nested and not trans.parent.nested)
+        ):
             # ensure that state is expired the way
             # session.commit() at the top level normally does
             session.expire_all()
 
+            if (
+                session._trans_context_manager == trans
+                and session._trans_context_manager._transaction_is_closed()
+            ):
+                session._trans_context_manager = trans.parent
+
             session.begin_nested()
-
-    # # Force the connection to use nested transactions
-    # connection.begin = connection.begin_nested
-
-    # If an object gets moved to the 'detached' state by a call to flush the session,
-    # add it back into the session (this allows us to see changes made to objects
-    # in the context of a test, even when the change was made elsewhere in
-    # the codebase)
-    @event.listens_for(session, "persistent_to_detached")
-    @event.listens_for(session, "deleted_to_detached")
-    def rehydrate_object(session: Session, obj: Any) -> None:
-        session.add(obj)
 
     try:
         yield connection, root_transaction, session
     finally:
+        event.remove(session, "after_transaction_end", restart_savepoint)
         # Rollback the transaction and return the connection to the pool
         session_force_close()
-        root_transaction_force_rollback()
-        connection_force_close()
-        event.remove(session, "after_transaction_end", restart_savepoint)
-        event.remove(session, "persistent_to_detached", rehydrate_object)
-        event.remove(session, "deleted_to_detached", rehydrate_object)
+        root_transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture(scope="session")
