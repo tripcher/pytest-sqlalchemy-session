@@ -38,7 +38,7 @@ dynamic = ["dependencies"]
 dependencies = {file = ["requirements/base.txt"]}
 
 [tool.setuptools]
-py-modules = ["pytest_sqlalchemy_session"]
+packages = ["pytest_sqlalchemy_session"]
 
 [project.entry-points.pytest11]
 pytest-sqlalchemy-session = "pytest_sqlalchemy_session.plugin"
