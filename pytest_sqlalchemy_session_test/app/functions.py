@@ -1,3 +1,4 @@
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from pytest_sqlalchemy_session_test.app import db
@@ -8,6 +9,14 @@ def create_instance_with_commit(instance_id: int) -> None:
     with db.session_factory() as session:
         session.execute(sample_table.insert(), {"id": instance_id})
         session.commit()
+
+
+def insert_on_conflict_do_nothing(instance_id: int) -> None:
+    with db.session_factory() as session, session.begin():
+        stmt = insert(sample_table).values(id=instance_id).returning(sample_table)
+
+        cursor = session.execute(stmt.on_conflict_do_nothing(index_elements=["id"]))
+        cursor.first()
 
 
 def create_instance_with_rollback(
@@ -25,6 +34,28 @@ def create_instance_with_rollback(
 def create_instance_with_begin(instance_id: int) -> None:
     with db.session_factory() as session, session.begin():
         session.execute(sample_table.insert(), {"id": instance_id})
+
+
+def create_instance_with_multiple_begin_select_commit(instance_id: int) -> None:
+    with db.session_factory() as session:
+        with session.begin():
+            session.execute(
+                sample_table.select().where(sample_table.c.id == 1)
+            ).fetchone()
+
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id})
+
+
+def create_instance_with_multiple_begin_two_commits(
+    instance_id: int, instance_id_2: int
+) -> None:
+    with db.session_factory() as session:
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id})
+
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id_2})
 
 
 def create_instance_with_begin_nested(

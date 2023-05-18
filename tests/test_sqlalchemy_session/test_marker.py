@@ -504,6 +504,106 @@ def test__marker__code_transaction_commit(
     result.assert_outcomes(passed=2)
 
 
+def test__marker__code_insert_on_conflict_do_nothing(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import insert_on_conflict_do_nothing
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_insert_on_conflict_do_nothing():
+            insert_on_conflict_do_nothing(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_insert_on_conflict_do_nothing_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__code_create_instance_with_multiple_begin_select_commit(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import create_instance_with_multiple_begin_select_commit
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_instance_with_multiple_begin():
+            create_instance_with_multiple_begin_select_commit(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_instance_with_multiple_begin_do_nothing_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__code_create_instance_with_multiple_begin_two_commits(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import create_instance_with_multiple_begin_two_commits
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_instance_with_multiple_begin():
+            create_instance_with_multiple_begin_two_commits(1, 2)
+            with db.session_factory() as session:
+                instance_1 = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+                instance_2 = session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 == (1,)
+            assert instance_2 == (2,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_instance_with_multiple_begin_do_nothing_changes_dont_persist(custom_session):
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
 def test__marker__code_transaction_rollback(
     db_testdir: Pytester,
 ) -> None:
