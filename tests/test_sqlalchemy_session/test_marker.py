@@ -604,6 +604,70 @@ def test__marker__code_create_instance_with_multiple_begin_two_commits(
     result.assert_outcomes(passed=2)
 
 
+def test__marker__code_create_commit_after_begin(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import create_commit_after_begin
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_commit_after_begin():
+            create_commit_after_begin(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_commit_after_begin_begin_do_nothing_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__code_create_rollback_after_begin(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import create_rollback_after_begin
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_rollback_after_begin():
+            create_rollback_after_begin(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_rollback_after_begin_do_nothing_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
 def test__marker__code_transaction_rollback(
     db_testdir: Pytester,
 ) -> None:

@@ -44,13 +44,14 @@ def modify_transaction_to_rollback(  # noqa: C901
 
     # Begin a nested transaction (any new transactions created in the codebase
     # will be held until this outer transaction is committed or closed)
-    session.begin_nested()
+    main_nested_transaction = session.begin_nested()
 
     # Each time the SAVEPOINT for the nested transaction ends, reopen it
     @event.listens_for(session, "after_transaction_end")
     def restart_savepoint(session: Session, trans: SessionTransaction) -> None:
         if root_transaction.is_active and (
             getattr(trans, "fake_nested", None)
+            or (trans.nested and trans.parent == main_nested_transaction)
             or (trans.nested and not trans.parent.nested)
         ):
             # ensure that state is expired the way

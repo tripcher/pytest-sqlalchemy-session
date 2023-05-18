@@ -47,6 +47,22 @@ def create_instance_with_multiple_begin_select_commit(instance_id: int) -> None:
             session.execute(sample_table.insert(), {"id": instance_id})
 
 
+def create_commit_after_begin(instance_id: int) -> None:
+    with db.session_factory() as session:
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id})
+
+        session.commit()
+
+
+def create_rollback_after_begin(instance_id: int) -> None:
+    with db.session_factory() as session:
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id})
+
+        session.rollback()
+
+
 def create_instance_with_multiple_begin_two_commits(
     instance_id: int, instance_id_2: int
 ) -> None:
