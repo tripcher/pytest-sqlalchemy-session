@@ -17,6 +17,38 @@ DbType = Tuple[sessionmaker, Engine]
 EventClauseElement = typing.Union[ClauseElement, Compiled, str]
 
 
+class RestartSavepoint:
+    def __init__(
+        self,
+        root_transaction: RootTransaction,
+        main_nested_transaction: SessionTransaction,
+    ):
+        self.main_nested_transaction = main_nested_transaction
+        self.root_transaction = root_transaction
+
+    def __call__(self, session: Session, trans: SessionTransaction):
+        if self.root_transaction.is_active and (
+            getattr(
+                trans, "fake_nested", None
+            )  # need to recreate main nested transaction after Session.begin()
+            or (
+                trans == self.main_nested_transaction
+            )  # need to recreate main nested transaction after close
+        ):
+            # ensure that state is expired the way
+            # session.commit() at the top level normally does
+            session.expire_all()
+
+            if (
+                session._trans_context_manager == trans
+                and session._trans_context_manager._transaction_is_closed()
+            ):
+                session._trans_context_manager = trans.parent
+
+            new_nested_transaction = session.begin_nested()
+            self.main_nested_transaction = new_nested_transaction
+
+
 @contextlib.contextmanager
 def modify_transaction_to_rollback(  # noqa: C901
     db: DbType,
@@ -45,26 +77,14 @@ def modify_transaction_to_rollback(  # noqa: C901
     # Begin a nested transaction (any new transactions created in the codebase
     # will be held until this outer transaction is committed or closed)
     main_nested_transaction = session.begin_nested()
-
     # Each time the SAVEPOINT for the nested transaction ends, reopen it
-    @event.listens_for(session, "after_transaction_end")
-    def restart_savepoint(session: Session, trans: SessionTransaction) -> None:
-        if root_transaction.is_active and (
-            getattr(trans, "fake_nested", None)
-            or (trans.nested and trans.parent == main_nested_transaction)
-            or (trans.nested and not trans.parent.nested)
-        ):
-            # ensure that state is expired the way
-            # session.commit() at the top level normally does
-            session.expire_all()
 
-            if (
-                session._trans_context_manager == trans
-                and session._trans_context_manager._transaction_is_closed()
-            ):
-                session._trans_context_manager = trans.parent
+    restart_savepoint = RestartSavepoint(
+        root_transaction=root_transaction,
+        main_nested_transaction=main_nested_transaction,
+    )
 
-            session.begin_nested()
+    event.listens_for(session, "after_transaction_end")(restart_savepoint)
 
     try:
         yield connection, root_transaction, session

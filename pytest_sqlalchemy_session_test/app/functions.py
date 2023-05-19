@@ -55,12 +55,36 @@ def create_commit_after_begin(instance_id: int) -> None:
         session.commit()
 
 
+def execute_close_begin_commit(instance_id: int) -> None:
+    with db.session_factory():
+        pass
+
+    with db.session_factory() as session:
+        with session.begin():
+            session.execute(sample_table.insert(), {"id": instance_id})
+
+        session.commit()
+
+
 def create_rollback_after_begin(instance_id: int) -> None:
     with db.session_factory() as session:
         with session.begin():
             session.execute(sample_table.insert(), {"id": instance_id})
 
         session.rollback()
+
+
+def create_commit_after_insert_on_conflict_do_nothing_in_begin(
+    instance_id: int,
+) -> None:
+    with db.session_factory() as session:
+        with session.begin():
+            stmt = insert(sample_table).values(id=instance_id).returning(sample_table)
+
+            cursor = session.execute(stmt.on_conflict_do_nothing(index_elements=["id"]))
+            cursor.first()
+
+        session.commit()
 
 
 def create_instance_with_multiple_begin_two_commits(

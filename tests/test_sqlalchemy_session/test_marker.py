@@ -35,6 +35,37 @@ def test__marker__transaction_commit(
     result.assert_outcomes(passed=2)
 
 
+def test__marker__transaction_commit_parametrize(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+
+        @pytest.mark.parametrize("instance_id", [1, 2, 3])
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_commit(custom_session, instance_id):
+            custom_session.execute(sample_table.insert(), {"id": instance_id})
+            custom_session.commit()
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == instance_id)).fetchone()
+
+            assert instance == (instance_id,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_commit_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select()).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=4)
+
+
 def test__marker__rows_are_available_for_different_sessions(
     db_testdir: Pytester,
 ) -> None:
@@ -365,6 +396,142 @@ def test__marker__transaction_begin_nested(
     result.assert_outcomes(passed=2)
 
 
+def test__marker__transaction_begin_nested_close(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested(custom_session):
+            with db.session_factory() as session:
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 1})
+
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 2})
+
+                # session.begin_nested()
+                # session.execute(sample_table.insert(), {"id": 3})
+                # session.rollback()
+
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+            # rollback_instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 3)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+            # assert rollback_instance is None
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested_changes_dont_persist(custom_session):
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__transaction_begin_nested_rollback(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested(custom_session):
+            with db.session_factory() as session:
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 1})
+
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 2})
+
+                session.rollback()
+
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested_changes_dont_persist(custom_session):
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__transaction_begin_nested_commit(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested(custom_session):
+            with db.session_factory() as session:
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 1})
+
+                with session.begin_nested():
+                    session.execute(sample_table.insert(), {"id": 2})
+
+                session.begin_nested()
+                session.execute(sample_table.insert(), {"id": 3})
+                session.rollback()
+
+                session.commit()
+
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+            rollback_instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 3)).fetchone()
+
+            assert instance_1 == (1,)
+            assert instance_2 == (2,)
+            assert rollback_instance is None
+
+        @pytest.mark.sqlalchemy_db
+        def test_transaction_begin_nested_changes_dont_persist(custom_session):
+            instance_1 = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+            instance_2 = custom_session.execute(sample_table.select().where(sample_table.c.id == 2)).fetchone()
+
+            assert instance_1 is None
+            assert instance_2 is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
 def test__marker__transaction_begin_nested_rollback_savepoint(
     db_testdir: Pytester,
 ) -> None:
@@ -623,7 +790,39 @@ def test__marker__code_create_commit_after_begin(
             assert instance == (1,)
 
         @pytest.mark.sqlalchemy_db
-        def test_create_commit_after_begin_begin_do_nothing_changes_dont_persist(custom_session):
+        def test_create_commit_after_begin_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__code_execute_close_begin_commit(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import execute_close_begin_commit
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_execute_close_begin_commit():
+            execute_close_begin_commit(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_execute_close_begin_commit_changes_dont_persist(custom_session):
             instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
 
             assert instance is None
@@ -655,7 +854,41 @@ def test__marker__code_create_rollback_after_begin(
             assert instance == (1,)
 
         @pytest.mark.sqlalchemy_db
-        def test_create_rollback_after_begin_do_nothing_changes_dont_persist(custom_session):
+        def test_create_rollback_after_begin_changes_dont_persist(custom_session):
+            instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance is None
+        """
+    )
+
+    result = db_testdir.runpytest()
+
+    logger.info(result.stdout.str())
+    result.assert_outcomes(passed=2)
+
+
+def test__marker__code_create_commit_after_insert_on_conflict_do_nothing_in_begin(
+    db_testdir: Pytester,
+) -> None:
+    db_testdir.makepyfile(
+        """
+        import pytest
+        from pytest_sqlalchemy_session_test.app.tables import sample_table
+        from pytest_sqlalchemy_session_test.app.functions import (
+            create_commit_after_insert_on_conflict_do_nothing_in_begin,
+        )
+        from pytest_sqlalchemy_session_test.app import db
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_commit_after_insert_on_conflict_do_nothing_in_begin():
+            create_commit_after_insert_on_conflict_do_nothing_in_begin(1)
+            with db.session_factory() as session:
+                instance = session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
+
+            assert instance == (1,)
+
+        @pytest.mark.sqlalchemy_db
+        def test_create_commit_after_insert_on_conflict_do_nothing_in_begin_changes_dont_persist(custom_session):
             instance = custom_session.execute(sample_table.select().where(sample_table.c.id == 1)).fetchone()
 
             assert instance is None
